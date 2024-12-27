@@ -1,101 +1,101 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [time, setTime] = useState(null); // Для демонстрації клієнтського значення
+    const [isRecording, setIsRecording] = useState(false);
+    const [stream, setStream] = useState(null);
+    const [audioUrl, setAudioUrl] = useState(null);
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [audioChunks, setAudioChunks] = useState([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+    // Використання useEffect для клієнтських даних
+    useEffect(() => {
+        setTime(new Date().toLocaleString()); // Установка клієнтського часу
+    }, []);
+
+    const handleStartCapture = async () => {
+        try {
+            console.log("Запит доступу до вкладки зі звуком...");
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: true,
+            });
+    
+            const audioTracks = displayStream.getAudioTracks();
+            if (audioTracks.length === 0) {
+                console.error("Аудіо-треки відсутні в потоці.");
+                alert("Аудіо не виявлено у вкладці. Переконайтеся, що у вкладці є звук.");
+                return;
+            }
+    
+            console.log("Аудіо-треки знайдено:", audioTracks);
+    
+            const recorder = new MediaRecorder(displayStream);
+            const audioChunks = [];
+    
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+    
+            recorder.onstop = async () => {
+                if (audioChunks.length > 0) {
+                    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    setAudioUrl(audioUrl); // Зберігаємо URL аудіо для відображення плеєра
+                    console.log("Аудіо успішно записано.");
+                } else {
+                    console.warn("Жодного аудіо-фрагмента не записано.");
+                }
+                setIsRecording(false); // Зупиняємо стан запису
+            };
+    
+            recorder.start(1000); // Запис фрагментами кожну секунду
+            setMediaRecorder(recorder);
+            setStream(displayStream);
+            setIsRecording(true);
+            console.log("Запис розпочато.");
+        } catch (error) {
+            console.error("Помилка доступу до аудіо:", error);
+            alert(`Не вдалося отримати доступ до звуку. Помилка: ${error.message}`);
+        }
+    };
+    
+    const handleStopCapture = () => {
+        if (mediaRecorder) {
+            console.log("Зупинка запису...");
+            mediaRecorder.stop(); // Зупиняємо запис
+        } else {
+            console.warn("MediaRecorder не знайдено.");
+        }
+    
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop()); // Зупиняємо всі треки (аудіо/відео)
+            setStream(null); // Очищуємо стан потоку
+        }
+    
+        setMediaRecorder(null); // Очищуємо стан MediaRecorder
+    };
+    
+
+    return (
+        <div style={{ textAlign: "center", marginTop: "50px" }}>
+        <h1>Привіт, NextOffer!</h1>
+        <button
+            onClick={isRecording ? handleStopCapture : handleStartCapture}
+            style={{ padding: "10px 20px", fontSize: "16px", marginTop: "20px" }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+            {isRecording ? "Зупинити запис" : "Почати захоплення звуку"}
+        </button>
+        {audioUrl && (
+            <div style={{ marginTop: "20px" }}>
+                <h2>Відтворити записаний звук:</h2>
+                <audio controls src={audioUrl}></audio>
+            </div>
+        )}
+    </div>    
+    );
 }
